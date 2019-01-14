@@ -122,7 +122,6 @@ fn main() {
   }
 }
 
-
 fn print_prompt() {
   const PROMPT: &str = ">>> ";
   print!("{}", PROMPT);
