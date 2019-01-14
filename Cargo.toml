@@ -1,0 +1,8 @@
+[package]
+name = "c-interpreter"
+version = "0.1.0"
+authors = ["kianenigma <Kian.peymani@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+colored = "1.7"
