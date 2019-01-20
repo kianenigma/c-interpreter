@@ -1,5 +1,5 @@
 [package]
-name = "c-interpreter"
+name = "c_interpreter"
 version = "0.1.0"
 authors = ["kianenigma <Kian.peymani@gmail.com>"]
 edition = "2018"
