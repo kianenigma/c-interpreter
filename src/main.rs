@@ -1,13 +1,14 @@
 extern crate colored; 
 extern crate rustyline;
 
-
 use std::io::Write;
 use std::process::{Command, Stdio};
 use std::error::Error;
 use std::fs::File;
+use std::time::{Instant};
 
 use colored::*;
+
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
@@ -128,7 +129,6 @@ return 0;
       Ok(handle) => handle,
       Err(why) => panic!("Failed to Execute: {}", why.description())
     };
-
     Ok(handle)
   }
 }
@@ -174,13 +174,14 @@ fn main() {
     let stmt_type: StmsType = get_statement_type(&current_statement);    
     program.push(&current_statement, stmt_type); 
 
+    let begin = Instant::now();
     match program.run() {
       Err(why) => { 
         println!("{}: {}", "--- Error".red(), why);
         program.pop();
       },
       Ok(handle) => {
-        print_output_handle(&handle);
+        print_output_handle(&handle, begin);
       }
     }
   }
@@ -192,8 +193,8 @@ fn command_src(program: &Program) -> Result<(), ()> {
   Ok(())
 }
 
-fn print_output_handle(handle: &std::process::Output) {
-  println!("{} \t{}", "[timing]".italic().dimmed(), "2s".bold());
+fn print_output_handle(handle: &std::process::Output, duration: Instant) {
+  println!("{} \t{}", "[timing]".italic().dimmed(), format!("{:?}", duration.elapsed()).bold());
   println!("{} \t{}", "[status]".italic().yellow(), handle.status.code().unwrap());
   println!("{} \t{}", "[stderr]".italic().red(), String::from_utf8_lossy(&handle.stderr).bold());
   println!("{} \t{}", "[stdout]".italic().green(), String::from_utf8_lossy(&handle.stdout).bold());
@@ -223,7 +224,8 @@ fn command_del(input: &str, program: &mut Program) -> Result<(), ()> {
 }
 
 fn command_run(program: &mut Program) -> Result<(), ()> {
-  print_output_handle(&program.run().unwrap());
+  let begin = Instant::now();
+  print_output_handle(&program.run().unwrap(), begin);
   Ok(())
 }
 
