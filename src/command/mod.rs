@@ -3,6 +3,7 @@ extern crate colored;
 use colored::*;
 
 use std::time::{Instant};
+
 use crate::program::Program;
 
 pub fn command_src(program: &Program) -> Result<(), ()> {
@@ -46,6 +47,20 @@ pub fn command_run(program: &mut Program) -> Result<(), ()> {
   Ok(())
 }
 
+pub fn command_argv<'a>(input: &'a str, program: &'a mut Program) -> Result<(), ()> {
+  if input.len() > 4 {
+    let mut chunks: Vec<&str> = input.split_whitespace().collect();
+    chunks.remove(0);
+    let new_argv = chunks.join(" ");
+    program.set_argv(new_argv);
+    println!("new argv = [{}]", program.argv);
+  } 
+  else {
+    println!("current argv = [{}]", program.argv);
+  }
+  Ok(())
+}
+
 pub fn execute_command(input: &str, program: &mut Program) -> Result<(), ()> {
   if &input[0..1] != "~" {
      return Err(());
@@ -55,6 +70,7 @@ pub fn execute_command(input: &str, program: &mut Program) -> Result<(), ()> {
       "~src" => command_src(program),
       "~del" => command_del(input, program),
       "~run" => command_run(program),
+      "~arg" => command_argv(input, program),
       _ => Err(())
   }
 }
@@ -64,13 +80,13 @@ mod test {
   use super::*; 
   use crate::program::StmsType;
   
-  fn create_dummy_program<'a>() -> Program<'a> {
+  fn create_dummy_program<'a>() -> Program {
     let mut p: Program = Program {
       defines: vec![],
       includes: vec![],
       statements: vec![],
       last_push: StmsType::Stmt,
-      argv: ""
+      argv: String::from("")
     };
     p.populate_default();
     p.push("#include <stdlib.h>", StmsType::Inc);
@@ -96,5 +112,15 @@ mod test {
       Ok(_) => assert!(true),
       _ => assert!(false)
     };
+  }
+
+  #[test]
+  fn command_argv_test() {
+      let mut p = create_dummy_program();
+      p.push(r#"for (int i = 0; i < argc; i++) {printf("argv[%d] = %s\n", i, argv[i]);}"#, StmsType::Stmt);
+      match command_argv("~argv FOO BAR", &mut p) {
+        Ok(_) => assert!(true),
+        Err(_) => assert!(false)
+      }
   }
 }

@@ -25,7 +25,7 @@ fn main() {
     includes: vec![], 
     statements: vec![], 
     last_push: StmsType::Stmt,
-    argv: ""
+    argv: String::from("")
   };
   program.populate_default();
   

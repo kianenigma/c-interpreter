@@ -9,15 +9,15 @@ pub enum StmsType {
   Inc
 }
 
-pub struct Program<'a> {
+pub struct Program {
   pub statements: Vec<String>,
   pub defines: Vec<String>,
   pub includes: Vec<String>,
   pub last_push: StmsType,
-  pub argv: &'a str
+  pub argv: String
 }
 
-impl<'a> Program<'a> {
+impl Program {
   pub fn populate_default(&mut self) {
     self.includes.push("#include <stdio.h>\n".to_owned());
   }
@@ -38,6 +38,10 @@ impl<'a> Program<'a> {
       StmsType::Stmt => self.statements.pop()
     };
   }
+
+  pub fn set_argv(&mut self, argv: String) {
+    self.argv = argv;
+  } 
 
   pub fn generate_source_code(&self, verbose: bool) -> String{
     let mut source_includes = String::new();
@@ -107,7 +111,9 @@ return 0;
     }
 
     // execute the binary 
+    let args: Vec<&str> = self.argv.split_whitespace().collect();
     let child = match Command::new(String::from("./a.out"))
+      .args(args)
       .stdout(Stdio::piped())
       .stderr(Stdio::piped())
       .spawn() {
@@ -127,13 +133,13 @@ return 0;
 mod tests {
   use super::*;
 
-  fn create_dummy_program<'a>() -> Program<'a> {
+  fn create_dummy_program<'a>() -> Program {
     let mut p: Program = Program {
       defines: vec![], 
       includes: vec![], 
       statements: vec![], 
       last_push: StmsType::Stmt,
-      argv: ""
+      argv: String::from("")
     };
     p.populate_default();
     p.push("#include <stdlib.h>", StmsType::Inc);
