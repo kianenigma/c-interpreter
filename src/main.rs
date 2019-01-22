@@ -24,7 +24,8 @@ fn main() {
     defines: vec![], 
     includes: vec![], 
     statements: vec![], 
-    last_push: StmsType::Stmt
+    last_push: StmsType::Stmt,
+    argv: ""
   };
   program.populate_default();
   

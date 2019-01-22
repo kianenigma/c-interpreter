@@ -9,14 +9,15 @@ pub enum StmsType {
   Inc
 }
 
-pub struct Program {
+pub struct Program<'a> {
   pub statements: Vec<String>,
   pub defines: Vec<String>,
   pub includes: Vec<String>,
-  pub last_push: StmsType
+  pub last_push: StmsType,
+  pub argv: &'a str
 }
 
-impl Program {
+impl<'a> Program<'a> {
   pub fn populate_default(&mut self) {
     self.includes.push("#include <stdio.h>\n".to_owned());
   }
@@ -68,7 +69,7 @@ impl Program {
 
 {defines}
 
-int main() {{
+int main(int argc, char **argv) {{
 // statements 
 {statements}
 
@@ -126,12 +127,13 @@ return 0;
 mod tests {
   use super::*;
 
-  fn create_dummy_program() -> Program {
+  fn create_dummy_program<'a>() -> Program<'a> {
     let mut p: Program = Program {
       defines: vec![], 
       includes: vec![], 
       statements: vec![], 
-      last_push: StmsType::Stmt
+      last_push: StmsType::Stmt,
+      argv: ""
     };
     p.populate_default();
     p.push("#include <stdlib.h>", StmsType::Inc);
@@ -182,6 +184,14 @@ mod tests {
     assert_eq!(String::from_utf8_lossy(&handle1.unwrap().stderr), "");
   }
 
+  #[test]
+  fn argv() {
+      let mut p = create_dummy_program();
+      p.push(r#"for (int i = 0; i < argc; i++) {printf("argv[%d] = %s\n", i, argv[i]);}"#, StmsType::Stmt);
+      let handle = p.run();
+      assert!(String::from_utf8_lossy(&handle.unwrap().stdout).contains("argv[0]"));
+  }
+  
   #[test]
   fn run_compile_error() {
     let mut p = create_dummy_program();

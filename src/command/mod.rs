@@ -64,12 +64,13 @@ mod test {
   use super::*; 
   use crate::program::StmsType;
   
-  fn create_dummy_program() -> Program {
+  fn create_dummy_program<'a>() -> Program<'a> {
     let mut p: Program = Program {
-      defines: vec![], 
-      includes: vec![], 
-      statements: vec![], 
-      last_push: StmsType::Stmt
+      defines: vec![],
+      includes: vec![],
+      statements: vec![],
+      last_push: StmsType::Stmt,
+      argv: ""
     };
     p.populate_default();
     p.push("#include <stdlib.h>", StmsType::Inc);
@@ -80,20 +81,20 @@ mod test {
   }
 
   #[test]
-  fn command_src() {
+  fn command_src_test() {
     let mut p = create_dummy_program();
     p.push("int x = 10;", StmsType::Stmt);
     assert!(p.generate_source_code(false).len() > 10);
   }
 
   #[test]
-  fn command_del() {
-      unimplemented!();
+  fn command_del_test() {
+    let mut p = create_dummy_program();
+    p.push("int a = 10;", StmsType::Stmt);
+    p.push(r#"printf("marker:%d\n", a)"#, StmsType::Stmt);
+    match command_del("~del 1", &mut p) {
+      Ok(_) => assert!(true),
+      _ => assert!(false)
+    };
   }
-
-  #[test]
-  fn command_matching() {
-      unimplemented!();
-  }
-
 }
