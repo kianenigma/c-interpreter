@@ -6,13 +6,15 @@ use std::fs::File;
 pub enum StmsType {
   Stmt,
   Def,
-  Inc
+  Inc,
+  Func
 }
 
 pub struct Program {
   pub statements: Vec<String>,
   pub defines: Vec<String>,
   pub includes: Vec<String>,
+  pub functions: Vec<String>,
   pub last_push: StmsType,
   pub argv: String
 }
@@ -26,7 +28,8 @@ impl Program {
     match stmt_type {
       StmsType::Def => self.defines.push(String::from(stmt)),
       StmsType::Inc => self.includes.push(String::from(stmt)),
-      StmsType::Stmt => self.statements.push(String::from(stmt))
+      StmsType::Stmt => self.statements.push(String::from(stmt)),
+      StmsType::Func => self.functions.push(String::from(&stmt[4..]))
     }
     self.last_push = stmt_type;
   }
@@ -35,7 +38,8 @@ impl Program {
     match self.last_push {
       StmsType::Def => self.defines.pop(),
       StmsType::Inc => self.includes.pop(),
-      StmsType::Stmt => self.statements.pop()
+      StmsType::Stmt => self.statements.pop(),
+      StmsType::Func => self.functions.pop()
     };
   }
 
@@ -47,6 +51,7 @@ impl Program {
     let mut source_includes = String::new();
     let mut source_defines = String::new();
     let mut source_statements = String::new();
+    let mut source_functions = String::new();
     let mut counter = 0;
     
     for inc in &self.includes {
@@ -58,6 +63,12 @@ impl Program {
     for def in &self.defines {
       if verbose { source_defines.push_str(&format!("({}){}\n", counter, def)); } 
       else { source_defines.push_str(&format!("{}\n", def)); }
+      counter += 1;
+    }
+
+    for func in &self.functions {
+      if verbose { source_functions.push_str(&format!("({}){}\n", counter, func)); } 
+      else { source_functions.push_str(&format!("{}\n", func)); }
       counter += 1;
     }
 
@@ -73,13 +84,15 @@ impl Program {
 
 {defines}
 
+{functions}
+
 int main(int argc, char **argv) {{
 // statements 
 {statements}
 
 printf("Hello C-Interpreter!\n");
 return 0;
-}}"#, includes = source_includes, defines = source_defines, statements = source_statements)
+}}"#, includes = source_includes, defines = source_defines, functions = source_functions, statements = source_statements)
   }
 
  pub fn run(&self) -> Result<std::process::Output, String> {
@@ -137,6 +150,7 @@ mod tests {
     let mut p: Program = Program {
       defines: vec![], 
       includes: vec![], 
+      functions: vec![], 
       statements: vec![], 
       last_push: StmsType::Stmt,
       argv: String::from("")
@@ -196,6 +210,15 @@ mod tests {
       p.push(r#"for (int i = 0; i < argc; i++) {printf("argv[%d] = %s\n", i, argv[i]);}"#, StmsType::Stmt);
       let handle = p.run();
       assert!(String::from_utf8_lossy(&handle.unwrap().stdout).contains("argv[0]"));
+  }
+
+  #[test]
+  fn functions() {
+      let mut p = create_dummy_program();
+      p.push(r#"void foo() { printf("func"); }"#, StmsType::Func);
+      p.push("foo();", StmsType::Stmt);
+      let handle = p.run();
+      assert!(String::from_utf8_lossy(&handle.unwrap().stdout).contains("MARKER"));
   }
   
   #[test]

@@ -24,6 +24,7 @@ fn main() {
     defines: vec![], 
     includes: vec![], 
     statements: vec![], 
+    functions: vec![],
     last_push: StmsType::Stmt,
     argv: String::from("")
   };
@@ -78,6 +79,7 @@ fn get_statement_type(stms: &str) -> StmsType {
   match &stms[0..4] {
       "#inc" => StmsType::Inc,
       "#def" => StmsType::Def,
+      "#fun" => StmsType::Func,
       _ => StmsType::Stmt
   }
 }

@@ -85,6 +85,7 @@ mod test {
       defines: vec![],
       includes: vec![],
       statements: vec![],
+      functions: vec![],
       last_push: StmsType::Stmt,
       argv: String::from("")
     };
