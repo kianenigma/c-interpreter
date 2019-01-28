@@ -20,6 +20,11 @@ use crate::command::*;
 mod constants;
 use crate::constants::*;
 
+mod config;
+use crate::config::Config;
+
+mod common;
+
 fn main() {
   let mut program = Program {
     defines: vec![], 
@@ -29,6 +34,11 @@ fn main() {
     last_push: StmsType::Stmt,
     argv: String::from("")
   };
+
+  let mut conf = Config { 
+    cc: "gcc".to_string() 
+  };
+
   program.populate_default();
   
   let mut rl = Editor::<()>::new();
@@ -36,7 +46,7 @@ fn main() {
 
   loop {
     let readline = rl.readline(PROMPT);
-    let current_statement = match readline {
+    let mut current_statement = match readline {
       Ok(line) => {
           rl.add_history_entry(line.as_ref());
           line
@@ -55,7 +65,8 @@ fn main() {
       }
     };
 
-    match execute_command(&current_statement, &mut program) {
+    current_statement = current_statement.trim().to_string();
+    match execute_command(&current_statement, &mut program, &mut conf) {
       Ok(_) => { continue; },
       Err(_) => ()
     };
@@ -64,9 +75,9 @@ fn main() {
     program.push(&current_statement, stmt_type); 
 
     let begin = Instant::now();
-    match program.run() {
+    match program.run(&conf) {
       Err(why) => { 
-        println!("{}: {}", "--- Error".red(), why);
+        println!("{}: {}", "--- Error Type:".red().bold(), why);
         program.pop();
       },
       Ok(handle) => {

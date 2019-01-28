@@ -17,10 +17,27 @@ Supported statements:
     - Functions (must be prepended with `#fun`)
     - Normal Statement.
 Commands: 
-    ~src
-    ~run
-    ~del <X>
-    ~arg <X>
+    ~src           - View the soruce code.
+    ~run           - Run current source code.
+    ~del <X>       - Delete a statement 
+    ~arg <X?>      - Get/Set a command line argument (argv)
+    ~xcc <X?>      - Get/Set the compiler.
 
 by Kianenigma.
 "#;
+
+pub const PROGRAM_TEMPLATE: &'static str = r#"{includes}
+
+{defines}
+
+{functions}
+
+int main(int argc, char **argv) {{
+// statements 
+{statements}
+
+    printf("Hello C-Interpreter!\n");
+    return 0;
+}}"#;
+
+pub const TEMP_FILE: &'static str = "temp.c";

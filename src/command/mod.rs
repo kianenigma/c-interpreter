@@ -5,6 +5,7 @@ use colored::*;
 use std::time::{Instant};
 
 use crate::program::Program;
+use crate::config::Config;
 
 pub fn command_src(program: &Program) -> Result<(), ()> {
   println!("{}:\n_____{}_____", "Source code".bold(), program.generate_source_code(true).italic());
@@ -20,7 +21,6 @@ pub fn print_output_handle(handle: &std::process::Output, duration: Instant) {
 
 pub fn command_del(input: &str, program: &mut Program) -> Result<(), ()> {
   let chunks: Vec<&str> = input.split_whitespace().collect();
-
   let index = match chunks[1].parse::<usize>() {
     Ok(index) => index,
     _ => return Err(())
@@ -41,9 +41,9 @@ pub fn command_del(input: &str, program: &mut Program) -> Result<(), ()> {
   Ok(())
 }
 
-pub fn command_run(program: &mut Program) -> Result<(), ()> {
+pub fn command_run(program: &mut Program, c: &mut Config) -> Result<(), ()> {
   let begin = Instant::now();
-  print_output_handle(&program.run().unwrap(), begin);
+  print_output_handle(&program.run(c).unwrap(), begin);
   Ok(())
 }
 
@@ -61,7 +61,20 @@ pub fn command_argv<'a>(input: &'a str, program: &'a mut Program) -> Result<(), 
   Ok(())
 }
 
-pub fn execute_command(input: &str, program: &mut Program) -> Result<(), ()> {
+pub fn command_xcc(input: &str, conf: &mut Config) -> Result<(), ()> {
+  if input.len() > 4 {
+    let chunks: Vec<&str> = input.split_whitespace().collect();
+    let new_cc = chunks[1].to_string();
+    conf.cc = new_cc;
+    println!("new compiler = [{}]", conf.cc);
+  }
+  else {
+    println!("current compiler = [{}]", conf.cc);
+  }
+  Ok(())
+}
+
+pub fn execute_command(input: &str, program: &mut Program, c: &mut Config) -> Result<(), ()> {
   if &input[0..1] != "~" {
      return Err(());
   }
@@ -69,8 +82,9 @@ pub fn execute_command(input: &str, program: &mut Program) -> Result<(), ()> {
   match &input[0..4] {
       "~src" => command_src(program),
       "~del" => command_del(input, program),
-      "~run" => command_run(program),
+      "~run" => command_run(program, c),
       "~arg" => command_argv(input, program),
+      "~xcc" => command_xcc(input, c),
       _ => Err(())
   }
 }
@@ -79,34 +93,18 @@ pub fn execute_command(input: &str, program: &mut Program) -> Result<(), ()> {
 mod test {
   use super::*; 
   use crate::program::StmsType;
-  
-  fn create_dummy_program<'a>() -> Program {
-    let mut p: Program = Program {
-      defines: vec![],
-      includes: vec![],
-      statements: vec![],
-      functions: vec![],
-      last_push: StmsType::Stmt,
-      argv: String::from("")
-    };
-    p.populate_default();
-    p.push("#include <stdlib.h>", StmsType::Inc);
-    p.push("#define KB 1024", StmsType::Def);
-    p.push("int init_value = 10;", StmsType::Stmt); 
-
-    p
-  }
+  use crate::common::create_dummy_program;
 
   #[test]
   fn command_src_test() {
-    let mut p = create_dummy_program();
+    let (mut p, mut _c) = create_dummy_program();
     p.push("int x = 10;", StmsType::Stmt);
     assert!(p.generate_source_code(false).len() > 10);
   }
 
   #[test]
   fn command_del_test() {
-    let mut p = create_dummy_program();
+    let (mut p, mut _c) = create_dummy_program();
     p.push("int a = 10;", StmsType::Stmt);
     p.push(r#"printf("marker:%d\n", a)"#, StmsType::Stmt);
     match command_del("~del 1", &mut p) {
@@ -117,11 +115,18 @@ mod test {
 
   #[test]
   fn command_argv_test() {
-      let mut p = create_dummy_program();
+      let (mut p, mut _c) = create_dummy_program();
       p.push(r#"for (int i = 0; i < argc; i++) {printf("argv[%d] = %s\n", i, argv[i]);}"#, StmsType::Stmt);
       match command_argv("~argv FOO BAR", &mut p) {
         Ok(_) => assert!(true),
         Err(_) => assert!(false)
       }
+  }
+
+  #[test]
+  fn command_xcc_test() { 
+    let (p, mut c) = create_dummy_program();
+    command_xcc("~xcc clang", &mut c);
+    assert!(c.cc == "clang");
   }
 }

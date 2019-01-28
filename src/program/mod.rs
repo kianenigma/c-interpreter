@@ -3,6 +3,10 @@ use std::process::{Command, Stdio};
 use std::error::Error;
 use std::fs::File;
 
+use crate::constants::{TEMP_FILE};
+
+use crate::config::Config;
+
 pub enum StmsType {
   Stmt,
   Def,
@@ -78,9 +82,7 @@ impl Program {
       counter += 1;
     }
 
-  format!(
-    r#"
-{includes}
+  format!(r#"{includes}
 
 {defines}
 
@@ -90,17 +92,15 @@ int main(int argc, char **argv) {{
 // statements 
 {statements}
 
-printf("Hello C-Interpreter!\n");
-return 0;
+    printf("Hello C-Interpreter!\n");
+    return 0;
 }}"#, includes = source_includes, defines = source_defines, functions = source_functions, statements = source_statements)
   }
 
- pub fn run(&self) -> Result<std::process::Output, String> {
+ pub fn run(&self, config: &Config) -> Result<std::process::Output, String> {
     let source = self.generate_source_code(false);
-    // create temp file
-    const TEMP_FILE: &'static str = "temp.c";
-    const CC: &'static str = "gcc";
 
+    // create temp file
     let mut temp_source_file = match File::create(TEMP_FILE) {
       Err(why) => panic!("Could not create temp file [{}]", why.description()),
       Ok(file) => file
@@ -113,14 +113,15 @@ return 0;
     }
 
     // spawn a compiler 
-    let compile_handle = match Command::new(CC).arg(TEMP_FILE).output() {
-      Err(why) => panic!("Failed to compile: {}", why.description()),
+    let cc = config.cc.clone();
+    let compile_handle = match Command::new(cc).arg(TEMP_FILE).output() {
+      Err(why) => panic!("Failed spawn compiler: {}", why.description()),
       Ok(handle) => handle
     };
 
     let compile_stderr = String::from_utf8_lossy(&compile_handle.stderr);
     if compile_stderr.len() > 0 {
-      return Err(format!("Compile Error: {}", compile_stderr));
+      return Err(format!("Compile Error:\n {}", compile_stderr));
     }
 
     // execute the binary 
@@ -145,27 +146,11 @@ return 0;
 #[cfg(test)]
 mod tests {
   use super::*;
-
-  fn create_dummy_program<'a>() -> Program {
-    let mut p: Program = Program {
-      defines: vec![], 
-      includes: vec![], 
-      functions: vec![], 
-      statements: vec![], 
-      last_push: StmsType::Stmt,
-      argv: String::from("")
-    };
-    p.populate_default();
-    p.push("#include <stdlib.h>", StmsType::Inc);
-    p.push("#define KB 1024", StmsType::Def);
-    p.push("int init_value = 10;", StmsType::Stmt); 
-
-    p
-  }
+  use crate::common::create_dummy_program;
 
   #[test]
   fn state_initial() {
-    let mut p = create_dummy_program();
+    let (mut p, mut _c) = create_dummy_program();
 
     assert_eq!(p.defines.len(), 1);
     assert_eq!(p.includes.len(), 2);
@@ -176,7 +161,7 @@ mod tests {
 
   #[test]
   fn state_add() {
-    let mut p = create_dummy_program();
+    let (mut p, mut _c) = create_dummy_program();
     p.push("#include <stddef.h>", StmsType::Inc);
     p.push("#include <stdint.h>", StmsType::Inc);
     p.push("#include <assert.h>", StmsType::Inc);
@@ -196,9 +181,9 @@ mod tests {
 
   #[test]
   fn run_basic() {
-    let p = create_dummy_program();
-    let handle = p.run();
-    let handle1 = p.run();
+    let (p, c) = create_dummy_program();
+    let handle = p.run(&c);
+    let handle1 = p.run(&c);
     // TODO: why handle is being borrowed here despite being a ref? Guess because of unwrap? 
     assert_eq!(String::from_utf8_lossy(&handle.unwrap().stdout), "Hello C-Interpreter!\n");
     assert_eq!(String::from_utf8_lossy(&handle1.unwrap().stderr), "");
@@ -206,33 +191,33 @@ mod tests {
 
   #[test]
   fn argv() {
-      let mut p = create_dummy_program();
+      let (mut p, c) = create_dummy_program();
       p.push(r#"for (int i = 0; i < argc; i++) {printf("argv[%d] = %s\n", i, argv[i]);}"#, StmsType::Stmt);
-      let handle = p.run();
+      let handle = p.run(&c);
       assert!(String::from_utf8_lossy(&handle.unwrap().stdout).contains("argv[0]"));
   }
 
   #[test]
   fn functions() {
-      let mut p = create_dummy_program();
-      p.push(r#"void foo() { printf("func"); }"#, StmsType::Func);
+      let (mut p, c) = create_dummy_program();
+      p.push(r#"#fun void foo() { printf("MARKER"); }"#, StmsType::Func);
       p.push("foo();", StmsType::Stmt);
-      let handle = p.run();
+      let handle = p.run(&c);
       assert!(String::from_utf8_lossy(&handle.unwrap().stdout).contains("MARKER"));
   }
   
   #[test]
   fn run_compile_error() {
-    let mut p = create_dummy_program();
+    let (mut p, c) = create_dummy_program();
     p.push("int x = 10", StmsType::Stmt);
-    assert_ne!(p.run().unwrap_err(), "");
+    assert_ne!(p.run(&c).unwrap_err(), "");
   }
 
   #[test]
   fn run_runtime_error() {
-    let mut p = create_dummy_program();
+    let (mut p, c) = create_dummy_program();
     p.push("int b = 0;", StmsType::Stmt);
     p.push("int x = 10/b;", StmsType::Stmt);
-    assert_eq!(p.run().unwrap().status.code().unwrap_or_else(|| 1000), 1000);
+    assert_eq!(p.run(&c).unwrap().status.code().unwrap_or_else(|| 1000), 1000);
   }
 }
