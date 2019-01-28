@@ -13,7 +13,7 @@ pub fn command_src(program: &Program) -> Result<String, &'static str> {
 
 pub fn format_output_handle(handle: &std::process::Output, duration: Instant) -> String {
   let timing = format!("{} \t{}", "[timing]".italic().dimmed(), format!("{:?}", duration.elapsed()).bold());
-  let status = format!("{} \t{}", "[status]".italic().yellow(), handle.status.code().unwrap());
+  let status = format!("{} \t{}", "[status]".italic().yellow(), handle.status.code().unwrap_or(-100));
   let stderr = format!("{} \t{}", "[stderr]".italic().red(), String::from_utf8_lossy(&handle.stderr).bold());
   let stdout = format!("{} \t{}", "[stdout]".italic().green(), String::from_utf8_lossy(&handle.stdout).bold());
   format!("{}\n{}\n{}\n{}", timing, status, stderr, stdout)
@@ -47,7 +47,10 @@ pub fn command_del(input: &str, program: &mut Program) -> Result<String, &'stati
 
 pub fn command_run(program: &mut Program, c: &mut Config) -> Result<String, &'static str> {
   let begin = Instant::now();
-  Ok(format_output_handle(&program.run(c).unwrap(), begin))
+  match program.run(c) {
+      Ok(output) => Ok(format_output_handle(&output, begin)),
+      Err(_) => Err("A Runtime error must have occured.")
+  }
 }
 
 pub fn command_argv(input: &str, program: &mut Program) -> Result<String, &'static str> {

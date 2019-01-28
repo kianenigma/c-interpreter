@@ -69,7 +69,7 @@ fn main() {
 
     if &current_statement[0..1] == "~" {
       match execute_command(&current_statement, &mut program, &mut conf) {
-        Ok(msg) => println!("Command successfull => {}", msg),
+        Ok(msg) => println!("Command successfull => \n{}", msg),
         Err(why) => println!("{} => {}", "Command failed".bold().red(), why)
       }
       continue;
