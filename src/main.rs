@@ -66,10 +66,15 @@ fn main() {
     };
 
     current_statement = current_statement.trim().to_string();
-    match execute_command(&current_statement, &mut program, &mut conf) {
-      Ok(_) => { continue; },
-      Err(_) => ()
-    };
+
+    if &current_statement[0..1] == "~" {
+      match execute_command(&current_statement, &mut program, &mut conf) {
+        Ok(msg) => println!("Command successfull => {}", msg),
+        Err(why) => println!("{} => {}", "Command failed".bold().red(), why)
+      }
+      continue;
+    }
+    
 
     let stmt_type: StmsType = get_statement_type(&current_statement);    
     program.push(&current_statement, stmt_type); 
@@ -81,7 +86,7 @@ fn main() {
         program.pop();
       },
       Ok(handle) => {
-        print_output_handle(&handle, begin);
+        println!("{}", format_output_handle(&handle, begin));
       }
     }
   }

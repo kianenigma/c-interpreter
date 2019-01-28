@@ -7,85 +7,82 @@ use std::time::{Instant};
 use crate::program::Program;
 use crate::config::Config;
 
-pub fn command_src(program: &Program) -> Result<(), ()> {
-  println!("{}:\n_____{}_____", "Source code".bold(), program.generate_source_code(true).italic());
-  Ok(())
+pub fn command_src(program: &Program) -> Result<String, &'static str> {
+  Ok(format!("{}:\n _____{}_____", "Source code".bold(), program.generate_source_code(true).italic()))
 }
 
-pub fn print_output_handle(handle: &std::process::Output, duration: Instant) {
-  println!("{} \t{}", "[timing]".italic().dimmed(), format!("{:?}", duration.elapsed()).bold());
-  println!("{} \t{}", "[status]".italic().yellow(), handle.status.code().unwrap());
-  println!("{} \t{}", "[stderr]".italic().red(), String::from_utf8_lossy(&handle.stderr).bold());
-  println!("{} \t{}", "[stdout]".italic().green(), String::from_utf8_lossy(&handle.stdout).bold());
+pub fn format_output_handle(handle: &std::process::Output, duration: Instant) -> String {
+  let timing = format!("{} \t{}", "[timing]".italic().dimmed(), format!("{:?}", duration.elapsed()).bold());
+  let status = format!("{} \t{}", "[status]".italic().yellow(), handle.status.code().unwrap());
+  let stderr = format!("{} \t{}", "[stderr]".italic().red(), String::from_utf8_lossy(&handle.stderr).bold());
+  let stdout = format!("{} \t{}", "[stdout]".italic().green(), String::from_utf8_lossy(&handle.stdout).bold());
+  format!("{}\n{}\n{}\n{}", timing, status, stderr, stdout)
 }
 
-pub fn command_del(input: &str, program: &mut Program) -> Result<(), ()> {
+pub fn command_del(input: &str, program: &mut Program) -> Result<String, &'static str> {
   let chunks: Vec<&str> = input.split_whitespace().collect();
   let index = match chunks[1].parse::<usize>() {
     Ok(index) => index,
-    _ => return Err(())
+    _ => return Err("Argument is not a number.")
   };
-
+  
+  let removed_statement; 
   if index < program.includes.len() {
+    removed_statement = program.includes[index].clone();
     program.includes.remove(index);
   }
   else if index < program.includes.len() + program.defines.len() {
+    removed_statement = program.defines[index - program.includes.len()].clone();
     program.defines.remove(index - program.includes.len());
   }
   else if index < program.includes.len() + program.defines.len() + program.statements.len() {
+    removed_statement = program.statements[index - program.includes.len() - program.defines.len()].clone();
     program.statements.remove(index - program.includes.len() - program.defines.len());
   }
   else {
-    return Err(())
+    return Err("Statement index is out of range");
   }
-  Ok(())
+  Ok(format!("removed [{}]", removed_statement))
 }
 
-pub fn command_run(program: &mut Program, c: &mut Config) -> Result<(), ()> {
+pub fn command_run(program: &mut Program, c: &mut Config) -> Result<String, &'static str> {
   let begin = Instant::now();
-  print_output_handle(&program.run(c).unwrap(), begin);
-  Ok(())
+  Ok(format_output_handle(&program.run(c).unwrap(), begin))
 }
 
-pub fn command_argv<'a>(input: &'a str, program: &'a mut Program) -> Result<(), ()> {
+pub fn command_argv(input: &str, program: &mut Program) -> Result<String, &'static str> {
   if input.len() > 4 {
     let mut chunks: Vec<&str> = input.split_whitespace().collect();
     chunks.remove(0);
     let new_argv = chunks.join(" ");
     program.set_argv(new_argv);
-    println!("new argv = [{}]", program.argv);
+    Ok(format!("new argv = [{}]", program.argv))
   } 
   else {
-    println!("current argv = [{}]", program.argv);
+    Ok(format!("current argv = [{}]", program.argv))
   }
-  Ok(())
 }
 
-pub fn command_xcc(input: &str, conf: &mut Config) -> Result<(), ()> {
+pub fn command_xcc(input: &str, conf: &mut Config) -> Result<String, &'static str> {
   if input.len() > 4 {
     let chunks: Vec<&str> = input.split_whitespace().collect();
     let new_cc = chunks[1].to_string();
     conf.cc = new_cc;
-    println!("new compiler = [{}]", conf.cc);
+    Ok(format!("new compiler = [{}]", conf.cc))
   }
   else {
-    println!("current compiler = [{}]", conf.cc);
+    Ok(format!("current compiler = [{}]", conf.cc))
   }
-  Ok(())
 }
 
-pub fn execute_command(input: &str, program: &mut Program, c: &mut Config) -> Result<(), ()> {
-  if &input[0..1] != "~" {
-     return Err(());
-  }
-
+pub fn execute_command(input: &str, program: &mut Program, c: &mut Config) -> Result<String, &'static str> {
   match &input[0..4] {
       "~src" => command_src(program),
       "~del" => command_del(input, program),
       "~run" => command_run(program, c),
       "~arg" => command_argv(input, program),
       "~xcc" => command_xcc(input, c),
-      _ => Err(())
+      _ => Err("Command not found.")
   }
 }
 
@@ -126,7 +123,10 @@ mod test {
   #[test]
   fn command_xcc_test() { 
     let (p, mut c) = create_dummy_program();
-    command_xcc("~xcc clang", &mut c);
+    match command_xcc("~xcc clang", &mut c) {
+      Err(_) => assert!(false),
+      _ => ()
+    }
     assert!(c.cc == "clang");
   }
 }

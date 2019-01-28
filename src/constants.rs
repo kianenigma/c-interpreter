@@ -26,18 +26,4 @@ Commands:
 by Kianenigma.
 "#;
 
-pub const PROGRAM_TEMPLATE: &'static str = r#"{includes}
-
-{defines}
-
-{functions}
-
-int main(int argc, char **argv) {{
-// statements 
-{statements}
-
-    printf("Hello C-Interpreter!\n");
-    return 0;
-}}"#;
-
 pub const TEMP_FILE: &'static str = "temp.c";

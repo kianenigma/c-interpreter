@@ -15,7 +15,7 @@ pub fn create_dummy_program() -> (Program, Config) {
     p.push("#define KB 1024", StmsType::Def);
     p.push("int init_value = 10;", StmsType::Stmt); 
 
-    let mut c: Config = Config { cc: "gcc".to_string() };
+    let c: Config = Config { cc: "gcc".to_string() };
 
     (p, c)
   }
