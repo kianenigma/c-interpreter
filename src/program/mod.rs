@@ -26,6 +26,7 @@ pub struct Program {
 impl Program {
   pub fn populate_default(&mut self) {
     self.includes.push("#include <stdio.h>\n".to_owned());
+    self.functions.push(r#"void test() { printf("Hello C-Interpreter!\n"); }"#.to_owned());
   }
 
   pub fn push(&mut self, stmt: &str, stmt_type: StmsType) {
@@ -89,10 +90,8 @@ impl Program {
 {functions}
 
 int main(int argc, char **argv) {{
-// statements 
 {statements}
 
-    printf("Hello C-Interpreter!\n");
     return 0;
 }}"#, includes = source_includes, defines = source_defines, functions = source_functions, statements = source_statements)
   }
@@ -120,7 +119,7 @@ int main(int argc, char **argv) {{
     };
 
     let compile_stderr = String::from_utf8_lossy(&compile_handle.stderr);
-    if compile_stderr.len() > 0 {
+    if compile_stderr.len() > 0 && compile_stderr.contains("error:") {
       return Err(format!("Compile Error:\n {}", compile_stderr));
     }
 
@@ -181,7 +180,8 @@ mod tests {
 
   #[test]
   fn run_basic() {
-    let (p, c) = create_dummy_program();
+    let (mut p, c) = create_dummy_program();
+    p.push("test();", StmsType::Stmt);
     let handle = p.run(&c);
     let handle1 = p.run(&c);
     // TODO: why handle is being borrowed here despite being a ref? Guess because of unwrap? 
@@ -218,6 +218,14 @@ mod tests {
     let (mut p, c) = create_dummy_program();
     p.push("int b = 0;", StmsType::Stmt);
     p.push("int x = 10/b;", StmsType::Stmt);
+    // println!("{:?}", p.run(&c));
     assert_eq!(p.run(&c).unwrap().status.code().unwrap_or_else(|| 1000), 1000);
+  }
+
+  #[test]
+  fn compiler_warnings_ignored() {
+    let (mut p, c) = create_dummy_program();
+    p.includes.remove(0);
+    assert!(p.run(&c).unwrap().stderr.len() == 0);
   }
 }

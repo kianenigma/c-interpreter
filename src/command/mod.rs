@@ -8,7 +8,7 @@ use crate::program::Program;
 use crate::config::Config;
 
 pub fn command_src(program: &Program) -> Result<String, &'static str> {
-  Ok(format!("{}:\n ____________________________\n{}\n____________________________", "Source code".bold(), program.generate_source_code(true).italic()))
+  Ok(format!("{}:\n____________________________\n{}\n____________________________", "Source code".bold(), program.generate_source_code(true).italic()))
 }
 
 pub fn format_output_handle(handle: &std::process::Output, duration: Instant) -> String {
@@ -35,9 +35,13 @@ pub fn command_del(input: &str, program: &mut Program) -> Result<String, &'stati
     removed_statement = program.defines[index - program.includes.len()].clone();
     program.defines.remove(index - program.includes.len());
   }
-  else if index < program.includes.len() + program.defines.len() + program.statements.len() {
-    removed_statement = program.statements[index - program.includes.len() - program.defines.len()].clone();
-    program.statements.remove(index - program.includes.len() - program.defines.len());
+  else if index < program.includes.len() + program.defines.len() + program.functions.len() {
+    removed_statement = program.functions[index - program.includes.len() - program.defines.len()].clone();
+    program.functions.remove(index - program.includes.len() - program.defines.len());
+  }
+  else if index < program.includes.len() + program.defines.len() + program.functions.len() + program.statements.len() {
+    removed_statement = program.statements[index - program.includes.len() - program.defines.len() - program.functions.len()].clone();
+    program.statements.remove(index - program.includes.len() - program.defines.len() - program.functions.len());
   }
   else {
     return Err("Statement index is out of range");
@@ -125,7 +129,7 @@ mod test {
 
   #[test]
   fn command_xcc_test() { 
-    let (p, mut c) = create_dummy_program();
+    let (_p, mut c) = create_dummy_program();
     match command_xcc("~xcc clang", &mut c) {
       Err(_) => assert!(false),
       _ => ()
