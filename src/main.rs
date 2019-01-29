@@ -52,12 +52,11 @@ fn main() {
           line
       },
       Err(ReadlineError::Interrupted) => {
-          println!("CTRL-C");
-          break
+          println!("CTRL-C Signal. Cleaning. use CTRL-D to exit.");
+          continue;
       },
       Err(ReadlineError::Eof) => {
-          println!("CTRL-D");
-          break
+          break;
       },
       Err(err) => {
           println!("Error: {:?}", err);
