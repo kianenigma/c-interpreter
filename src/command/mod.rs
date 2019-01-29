@@ -8,7 +8,7 @@ use crate::program::Program;
 use crate::config::Config;
 
 pub fn command_src(program: &Program) -> Result<String, &'static str> {
-  Ok(format!("{}:\n _____{}_____", "Source code".bold(), program.generate_source_code(true).italic()))
+  Ok(format!("{}:\n ____________________________\n{}\n____________________________", "Source code".bold(), program.generate_source_code(true).italic()))
 }
 
 pub fn format_output_handle(handle: &std::process::Output, duration: Instant) -> String {
