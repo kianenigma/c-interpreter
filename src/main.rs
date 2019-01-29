@@ -46,7 +46,7 @@ fn main() {
 
   loop {
     let readline = rl.readline(PROMPT);
-    let mut current_statement = match readline {
+    let current_statement = match readline {
       Ok(line) => {
           rl.add_history_entry(line.as_ref());
           line
@@ -64,29 +64,33 @@ fn main() {
       }
     };
 
-    current_statement = current_statement.trim().to_string();
+    interpret(current_statement, &mut program, &mut conf);    
+  }
+}
 
-    if &current_statement[0..1] == "~" {
-      match execute_command(&current_statement, &mut program, &mut conf) {
-        Ok(msg) => println!("Command successfull => \n{}", msg),
-        Err(why) => println!("{} => {}", "Command failed".bold().red(), why)
-      }
-      continue;
+fn interpret(input: String, program: &mut Program, conf: &mut Config) {
+  let current_statement = input.trim().to_string();
+
+  if &current_statement[0..1] == "~" {
+    match execute_command(&current_statement, program, conf) {
+      Ok(msg) => println!("Command successfull => \n{}", msg),
+      Err(why) => println!("{} => {}", "Command failed".bold().red(), why)
     }
-    
+    return ();
+  }
+  
 
-    let stmt_type: StmsType = get_statement_type(&current_statement);    
-    program.push(&current_statement, stmt_type); 
+  let stmt_type: StmsType = get_statement_type(&current_statement);    
+  program.push(&current_statement, stmt_type); 
 
-    let begin = Instant::now();
-    match program.run(&conf) {
-      Err(why) => { 
-        println!("{}: {}", "--- Error Type:".red().bold(), why);
-        program.pop();
-      },
-      Ok(handle) => {
-        println!("{}", format_output_handle(&handle, begin));
-      }
+  let begin = Instant::now();
+  match program.run(&conf) {
+    Err(why) => { 
+      println!("{}: {}", "--- Error Type:".red().bold(), why);
+      program.pop();
+    },
+    Ok(handle) => {
+      println!("{}", format_output_handle(&handle, begin));
     }
   }
 }
