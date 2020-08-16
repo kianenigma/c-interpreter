@@ -1,6 +1,6 @@
 pub static PROMPT: &'static str = ">>> ";
 pub static ASCII: &'static str = r#"
-  /$$$$$$                      /$$$$$$ /$$   /$$ /$$$$$$$$/$$$$$$$$ /$$$$$$$  /$$$$$$$  /$$$$$$$  /$$$$$$$$/$$$$$$$$/$$$$$$$$ /$$$$$$$ 
+  /$$$$$$                      /$$$$$$ /$$   /$$ /$$$$$$$$/$$$$$$$$ /$$$$$$$  /$$$$$$$  /$$$$$$$  /$$$$$$$$/$$$$$$$$/$$$$$$$$ /$$$$$$$
  /$$__  $$                    |_  $$_/| $$$ | $$|__  $$__/ $$_____/| $$__  $$| $$__  $$| $$__  $$| $$_____/__  $$__/ $$_____/| $$__  $$
 | $$  \__/                      | $$  | $$$$| $$   | $$  | $$      | $$  \ $$| $$  \ $$| $$  \ $$| $$        | $$  | $$      | $$  \ $$
 | $$             /$$$$$$        | $$  | $$ $$ $$   | $$  | $$$$$   | $$$$$$$/| $$$$$$$/| $$$$$$$/| $$$$$     | $$  | $$$$$   | $$$$$$$/
@@ -13,13 +13,13 @@ pub static ASCII: &'static str = r#"
 pub const HELP: &'static str = r#"
 Supported statements:
     - Includes
-    - Defines 
+    - Defines
     - Functions (must be prepended with `#fun`)
     - Normal Statement.
-Commands: 
+Commands:
     ~src           - View the soruce code.
     ~run           - Run current source code.
-    ~del <X>       - Delete a statement 
+    ~del <X>       - Delete a statement
     ~arg <X?>      - Get/Set a command line argument (argv)
     ~xcc <X?>      - Get/Set the compiler.
 

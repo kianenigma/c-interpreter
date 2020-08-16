@@ -1,3 +1,3 @@
 pub struct Config {
-  pub cc: String
+	pub cc: String,
 }

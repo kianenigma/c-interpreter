@@ -1,10 +1,9 @@
 [package]
-name = "c_interpreter"
+name = "c-interpreter"
 version = "0.1.0"
 authors = ["kianenigma <Kian.peymani@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-colored = "1.7"
-rustyline = "3.0.0"
-time = "0.1"
+colored = "2.0"
+rustyline = "6.2.0"
