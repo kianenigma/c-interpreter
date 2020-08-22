@@ -125,20 +125,20 @@ pub fn execute_command(
 #[cfg(test)]
 mod test {
 	use super::*;
-	use crate::{common::create_dummy_program, program::StmsType};
+	use crate::{program::StatementType, testing_utils::create_dummy_program};
 
 	#[test]
 	fn command_src_test() {
 		let (mut p, mut _c) = create_dummy_program();
-		p.push("int x = 10;", StmsType::Stmt);
+		p.push("int x = 10;", StatementType::Stmt);
 		assert!(p.generate_source_code(false).len() > 10);
 	}
 
 	#[test]
 	fn command_del_test() {
 		let (mut p, mut _c) = create_dummy_program();
-		p.push("int a = 10;", StmsType::Stmt);
-		p.push(r#"printf("marker:%d\n", a)"#, StmsType::Stmt);
+		p.push("int a = 10;", StatementType::Stmt);
+		p.push(r#"printf("marker:%d\n", a)"#, StatementType::Stmt);
 		match command_del("~del 1", &mut p) {
 			Ok(_) => assert!(true),
 			_ => assert!(false),
@@ -150,7 +150,7 @@ mod test {
 		let (mut p, mut _c) = create_dummy_program();
 		p.push(
 			r#"for (int i = 0; i < argc; i++) {printf("argv[%d] = %s\n", i, argv[i]);}"#,
-			StmsType::Stmt,
+			StatementType::Stmt,
 		);
 		match command_argv("~argv FOO BAR", &mut p) {
 			Ok(_) => assert!(true),

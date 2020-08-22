@@ -9,11 +9,29 @@ use crate::constants::TEMP_FILE;
 
 use crate::config::Config;
 
-pub enum StmsType {
+pub enum StatementType {
 	Stmt,
 	Def,
 	Inc,
 	Func,
+}
+
+impl<'a, T: Into<&'a str>> From<T> for StatementType {
+	fn from(t: T) -> Self {
+		let string: &str = t.into();
+		match &string[0..4] {
+			"#inc" => StatementType::Inc,
+			"#def" => StatementType::Def,
+			"#fun" => StatementType::Func,
+			_ => StatementType::Stmt,
+		}
+	}
+}
+
+impl Default for StatementType {
+	fn default() -> Self {
+		Self::Stmt
+	}
 }
 
 pub struct Program {
@@ -21,33 +39,46 @@ pub struct Program {
 	pub defines: Vec<String>,
 	pub includes: Vec<String>,
 	pub functions: Vec<String>,
-	pub last_push: StmsType,
+	pub last_push: StatementType,
 	pub argv: String,
 }
 
+impl Default for Program {
+	fn default() -> Self {
+		Self {
+			includes: vec!["#include <stdio.h>\n".to_owned()],
+			functions: vec![r#"void test() { printf("Hello C-Interpreter!\n"); }"#.to_owned()],
+			statements: Default::default(),
+			defines: Default::default(),
+			argv: Default::default(),
+			last_push: Default::default(),
+		}
+	}
+}
+
 impl Program {
-	pub fn populate_default(&mut self) {
-		self.includes.push("#include <stdio.h>\n".to_owned());
-		self.functions
-			.push(r#"void test() { printf("Hello C-Interpreter!\n"); }"#.to_owned());
+	pub fn new() -> Self {
+		Self {
+			..Default::default()
+		}
 	}
 
-	pub fn push(&mut self, stmt: &str, stmt_type: StmsType) {
+	pub fn push(&mut self, stmt: &str, stmt_type: StatementType) {
 		match stmt_type {
-			StmsType::Def => self.defines.push(String::from(stmt)),
-			StmsType::Inc => self.includes.push(String::from(stmt)),
-			StmsType::Stmt => self.statements.push(String::from(stmt)),
-			StmsType::Func => self.functions.push(String::from(&stmt[4..])),
+			StatementType::Def => self.defines.push(String::from(stmt)),
+			StatementType::Inc => self.includes.push(String::from(stmt)),
+			StatementType::Stmt => self.statements.push(String::from(stmt)),
+			StatementType::Func => self.functions.push(String::from(&stmt[4..])),
 		}
 		self.last_push = stmt_type;
 	}
 
 	pub fn pop(&mut self) {
 		match self.last_push {
-			StmsType::Def => self.defines.pop(),
-			StmsType::Inc => self.includes.pop(),
-			StmsType::Stmt => self.statements.pop(),
-			StmsType::Func => self.functions.pop(),
+			StatementType::Def => self.defines.pop(),
+			StatementType::Inc => self.includes.pop(),
+			StatementType::Stmt => self.statements.pop(),
+			StatementType::Func => self.functions.pop(),
 		};
 	}
 
@@ -167,7 +198,7 @@ int main(int argc, char **argv) {{
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use crate::common::create_dummy_program;
+	use crate::testing_utils::create_dummy_program;
 
 	#[test]
 	fn state_initial() {
@@ -176,24 +207,24 @@ mod tests {
 		assert_eq!(p.defines.len(), 1);
 		assert_eq!(p.includes.len(), 2);
 		assert_eq!(p.statements.len(), 1);
-		p.push("int b = 20;", StmsType::Stmt);
+		p.push("int b = 20;", StatementType::Stmt);
 		assert_eq!(p.statements.len(), 2);
 	}
 
 	#[test]
 	fn state_add() {
 		let (mut p, mut _c) = create_dummy_program();
-		p.push("#include <stddef.h>", StmsType::Inc);
-		p.push("#include <stdint.h>", StmsType::Inc);
-		p.push("#include <assert.h>", StmsType::Inc);
+		p.push("#include <stddef.h>", StatementType::Inc);
+		p.push("#include <stdint.h>", StatementType::Inc);
+		p.push("#include <assert.h>", StatementType::Inc);
 
-		p.push("#define X 10", StmsType::Def);
-		p.push("#define XX 10", StmsType::Def);
-		p.push("#define XXX 10", StmsType::Def);
+		p.push("#define X 10", StatementType::Def);
+		p.push("#define XX 10", StatementType::Def);
+		p.push("#define XXX 10", StatementType::Def);
 
-		p.push("int x = 10;", StmsType::Stmt);
-		p.push("int xx = 10;", StmsType::Stmt);
-		p.push("int xxx = 10;", StmsType::Stmt);
+		p.push("int x = 10;", StatementType::Stmt);
+		p.push("int xx = 10;", StatementType::Stmt);
+		p.push("int xxx = 10;", StatementType::Stmt);
 
 		assert_eq!(p.defines.len(), 4);
 		assert_eq!(p.includes.len(), 5);
@@ -203,7 +234,7 @@ mod tests {
 	#[test]
 	fn run_basic() {
 		let (mut p, c) = create_dummy_program();
-		p.push("test();", StmsType::Stmt);
+		p.push("test();", StatementType::Stmt);
 		let handle = p.run(&c);
 		let handle1 = p.run(&c);
 		// TODO: why handle is being borrowed here despite being a ref? Guess because of unwrap?
@@ -219,7 +250,7 @@ mod tests {
 		let (mut p, c) = create_dummy_program();
 		p.push(
 			r#"for (int i = 0; i < argc; i++) {printf("argv[%d] = %s\n", i, argv[i]);}"#,
-			StmsType::Stmt,
+			StatementType::Stmt,
 		);
 		let handle = p.run(&c);
 		assert!(String::from_utf8_lossy(&handle.unwrap().stdout).contains("argv[0]"));
@@ -228,8 +259,11 @@ mod tests {
 	#[test]
 	fn functions() {
 		let (mut p, c) = create_dummy_program();
-		p.push(r#"#fun void foo() { printf("MARKER"); }"#, StmsType::Func);
-		p.push("foo();", StmsType::Stmt);
+		p.push(
+			r#"#fun void foo() { printf("MARKER"); }"#,
+			StatementType::Func,
+		);
+		p.push("foo();", StatementType::Stmt);
 		let handle = p.run(&c);
 		assert!(String::from_utf8_lossy(&handle.unwrap().stdout).contains("MARKER"));
 	}
@@ -237,15 +271,15 @@ mod tests {
 	#[test]
 	fn run_compile_error() {
 		let (mut p, c) = create_dummy_program();
-		p.push("int x = 10", StmsType::Stmt);
+		p.push("int x = 10", StatementType::Stmt);
 		assert_ne!(p.run(&c).unwrap_err(), "");
 	}
 
 	#[test]
 	fn run_runtime_error() {
 		let (mut p, c) = create_dummy_program();
-		p.push("int b = 0;", StmsType::Stmt);
-		p.push("int x = 10/b;", StmsType::Stmt);
+		p.push("int b = 0;", StatementType::Stmt);
+		p.push("int x = 10/b;", StatementType::Stmt);
 		// println!("{:?}", p.run(&c));
 		assert_eq!(
 			p.run(&c).unwrap().status.code().unwrap_or_else(|| 1000),

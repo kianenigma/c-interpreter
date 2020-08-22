@@ -1,51 +1,28 @@
-extern crate colored;
-extern crate rustyline;
-
-// std imports
+use colored::*;
+use rustyline::{error::ReadlineError, Editor};
 use std::time::Instant;
 
-// external crate imports
-use colored::*;
-
-use rustyline::{error::ReadlineError, Editor};
-
-// local crate import
-mod program;
-use crate::program::{Program, StmsType};
-
 mod command;
-use crate::command::*;
-
-mod constants;
-use crate::constants::*;
-
 mod config;
-use crate::config::Config;
+mod constants;
+mod program;
+mod testing_utils;
 
-mod common;
+use crate::command::*;
+use crate::config::Config;
+use crate::constants::*;
+use crate::program::{Program, StatementType};
 
 fn main() {
-	let mut program = Program {
-		defines: vec![],
-		includes: vec![],
-		statements: vec![],
-		functions: vec![],
-		last_push: StmsType::Stmt,
-		argv: String::from(""),
-	};
-
-	let mut conf = Config {
-		cc: "gcc".to_string(),
-	};
-
-	program.populate_default();
+	let mut program = Program::default();
+	let mut conf = Config::default();
 
 	let mut rl = Editor::<()>::new();
 	println!("{}{}", ASCII, HELP);
 
 	loop {
-		let readline = rl.readline(PROMPT);
-		let current_statement = match readline {
+		let line_result = rl.readline(PROMPT);
+		let current_statement = match line_result {
 			Ok(line) => {
 				rl.add_history_entry(&line);
 				line
@@ -70,7 +47,7 @@ fn main() {
 fn interpret(input: String, program: &mut Program, conf: &mut Config) {
 	let current_statement = input.trim().to_string();
 
-	if &current_statement[0..1] == "~" {
+	if current_statement.starts_with("~") {
 		match execute_command(&current_statement, program, conf) {
 			Ok(msg) => println!("Command successfull => \n{}", msg),
 			Err(why) => println!("{} => {}", "Command failed".bold().red(), why),
@@ -78,7 +55,7 @@ fn interpret(input: String, program: &mut Program, conf: &mut Config) {
 		return ();
 	}
 
-	let stmt_type: StmsType = get_statement_type(&current_statement);
+	let stmt_type = StatementType::from(current_statement.as_str());
 	program.push(&current_statement, stmt_type);
 
 	let begin = Instant::now();
@@ -90,14 +67,5 @@ fn interpret(input: String, program: &mut Program, conf: &mut Config) {
 		Ok(handle) => {
 			println!("{}", format_output_handle(&handle, begin));
 		}
-	}
-}
-
-fn get_statement_type(stms: &str) -> StmsType {
-	match &stms[0..4] {
-		"#inc" => StmsType::Inc,
-		"#def" => StmsType::Def,
-		"#fun" => StmsType::Func,
-		_ => StmsType::Stmt,
 	}
 }
