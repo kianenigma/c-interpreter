@@ -1,11 +1,8 @@
 use std::{
-	error::Error,
 	fs::File,
 	io::Write,
 	process::{Command, Stdio},
 };
-
-use crate::constants::TEMP_FILE;
 
 use crate::config::Config;
 
@@ -41,6 +38,7 @@ pub struct Program {
 	pub functions: Vec<String>,
 	pub last_push: StatementType,
 	pub argv: String,
+	pub ident: u32,
 }
 
 impl Default for Program {
@@ -52,15 +50,38 @@ impl Default for Program {
 			defines: Default::default(),
 			argv: Default::default(),
 			last_push: Default::default(),
+			ident: rand::random(),
 		}
+	}
+}
+
+impl Drop for Program {
+	fn drop(&mut self) {
+		let _ = std::fs::remove_file(self.executable_file_name());
+		let _ = std::fs::remove_file(self.source_file_name());
 	}
 }
 
 impl Program {
 	pub fn new() -> Self {
+		let ident = rand::random::<u32>();
 		Self {
-			..Default::default()
+			includes: Default::default(),
+			functions: Default::default(),
+			statements: Default::default(),
+			defines: Default::default(),
+			argv: Default::default(),
+			last_push: Default::default(),
+			ident,
 		}
+	}
+
+	pub fn source_file_name(&self) -> String {
+		format!("{}.c", self.ident.to_string())
+	}
+
+	pub fn executable_file_name(&self) -> String {
+		format!("./{}.out", self.ident.to_string())
 	}
 
 	pub fn push(&mut self, stmt: &str, stmt_type: StatementType) {
@@ -152,23 +173,22 @@ int main(int argc, char **argv) {{
 		let source = self.generate_source_code(false);
 
 		// create temp file
-		let mut temp_source_file = match File::create(TEMP_FILE) {
-			Err(why) => panic!("Could not create temp file [{}]", why.description()),
-			Ok(file) => file,
-		};
+		let mut temp_source_file =
+			File::create(self.source_file_name()).map_err(|err| err.to_string())?;
 
 		// write source to a temp file
-		match temp_source_file.write_all(source.as_bytes()) {
-			Err(why) => panic!("Could not write to temp file: [{}]", why.description()),
-			Ok(_) => (),
-		}
+		let _ = temp_source_file
+			.write_all(source.as_bytes())
+			.map_err(|err| err.to_string())?;
 
 		// spawn a compiler
 		let cc = config.cc.clone();
-		let compile_handle = match Command::new(cc).arg(TEMP_FILE).output() {
-			Err(why) => panic!("Failed spawn compiler: {}", why.description()),
-			Ok(handle) => handle,
-		};
+		let compile_handle = Command::new(cc)
+			.arg(self.source_file_name())
+			.arg("-o")
+			.arg(self.executable_file_name())
+			.output()
+			.map_err(|e| e.to_string())?;
 
 		let compile_stderr = String::from_utf8_lossy(&compile_handle.stderr);
 		if compile_stderr.len() > 0 && compile_stderr.contains("error:") {
@@ -177,21 +197,14 @@ int main(int argc, char **argv) {{
 
 		// execute the binary
 		let args: Vec<&str> = self.argv.split_whitespace().collect();
-		let child = match Command::new(String::from("./a.out"))
+		let child = Command::new(self.executable_file_name())
 			.args(args)
 			.stdout(Stdio::piped())
 			.stderr(Stdio::piped())
 			.spawn()
-		{
-			Ok(child) => child,
-			Err(why) => panic!("Failed to Execute: {}", why.description()),
-		};
+			.map_err(|e| e.to_string())?;
 
-		let handle = match child.wait_with_output() {
-			Ok(handle) => handle,
-			Err(why) => panic!("Failed to Execute: {}", why.description()),
-		};
-		Ok(handle)
+		child.wait_with_output().map_err(|e| e.to_string())
 	}
 }
 
@@ -249,10 +262,11 @@ mod tests {
 	fn argv() {
 		let (mut p, c) = create_dummy_program();
 		p.push(
-			r#"for (int i = 0; i < argc; i++) {printf("argv[%d] = %s\n", i, argv[i]);}"#,
+			r#"for (int i = 0; i < argc; i++) { printf("argv[%d] = %s\n", i, argv[i]); }"#,
 			StatementType::Stmt,
 		);
 		let handle = p.run(&c);
+
 		assert!(String::from_utf8_lossy(&handle.unwrap().stdout).contains("argv[0]"));
 	}
 

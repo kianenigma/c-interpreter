@@ -7,3 +7,4 @@ edition = "2018"
 [dependencies]
 colored = "2.0"
 rustyline = "6.2.0"
+rand = "0.7.3"

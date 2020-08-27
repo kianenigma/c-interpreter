@@ -25,5 +25,3 @@ Commands:
 
 by Kianenigma.
 "#;
-
-pub const TEMP_FILE: &'static str = "temp.c";
